@@ -26,6 +26,16 @@ export interface BodyweightParams {
   repsPerSetIncrease: number;
 }
 
+export interface RunDistanceState {
+  miles: number;
+  consecutiveFailures: number;
+}
+
+export interface RunSpeedState {
+  mph: number;
+  consecutiveFailures: number;
+}
+
 export interface Exercise {
   id: string;
   name: string;
@@ -44,6 +54,16 @@ export interface Exercise {
   current_sets: number;
   current_reps: number | null;
   current_reps_per_set: number | null;
+  exercise_type?: string;
+}
+
+export interface RunExercise {
+  id: string;
+  name: string;
+  exercise_type: 'run_distance' | 'run_speed' | 'run_outdoor';
+  current_miles: number;
+  current_mph: number | null;
+  consecutive_failures: number;
 }
 
 export function roundToIncrement(value: number, increment: number): number {
@@ -55,18 +75,15 @@ export function nextStateWeighted(
   params: WeightedParams,
   completed: boolean,
 ): WeightedState {
-  if (!completed) {
-    return { ...state };
-  }
+  if (!completed) return { ...state };
 
   if (state.sets < params.endingSets) {
     return { ...state, sets: state.sets + params.setIncrease };
   } else if (state.reps < params.endingReps) {
     return { ...state, reps: state.reps + params.repsPerSetIncrease, sets: params.startingSets };
   } else {
-    const newWeight = roundToIncrement(state.weight * (1 + params.weightIncrease), params.rounding);
     return {
-      weight: newWeight,
+      weight: roundToIncrement(state.weight * (1 + params.weightIncrease), params.rounding),
       sets: params.startingSets,
       reps: params.startingReps,
     };
@@ -78,15 +95,51 @@ export function nextStateBodyweight(
   params: BodyweightParams,
   completed: boolean,
 ): BodyweightState {
-  if (!completed) {
-    return { ...state };
-  }
+  if (!completed) return { ...state };
 
   if (state.sets < params.endingSets) {
     return { ...state, sets: state.sets + 1 };
   } else {
     return { repsPerSet: state.repsPerSet + params.repsPerSetIncrease, sets: params.startingSets };
   }
+}
+
+// Long-distance run: +0.5 miles on success (max 6.25), repeat on first fail,
+// go back 0.5 miles on two consecutive fails (min 3.0).
+export function nextRunDistanceState(
+  state: RunDistanceState,
+  completed: boolean,
+): RunDistanceState {
+  if (completed) {
+    const next = Math.min(roundToIncrement(state.miles + 0.5, 0.25), 6.25);
+    return { miles: next, consecutiveFailures: 0 };
+  }
+  const newFailures = state.consecutiveFailures + 1;
+  if (newFailures >= 2) {
+    const prev = Math.max(roundToIncrement(state.miles - 0.5, 0.25), 3.0);
+    return { miles: prev, consecutiveFailures: 0 };
+  }
+  return { ...state, consecutiveFailures: newFailures };
+}
+
+// Speed run: +0.2 MPH on success (max 9.6), repeat on first fail,
+// go back 0.2 MPH on two consecutive fails (min 8.0).
+// Use integer arithmetic (* 10) to avoid 0.1 floating-point errors.
+export function nextRunSpeedState(
+  state: RunSpeedState,
+  completed: boolean,
+): RunSpeedState {
+  const snapMph = (v: number) => Math.round(v * 10) / 10;
+  if (completed) {
+    const next = Math.min(snapMph(state.mph + 0.2), 9.6);
+    return { mph: next, consecutiveFailures: 0 };
+  }
+  const newFailures = state.consecutiveFailures + 1;
+  if (newFailures >= 2) {
+    const prev = Math.max(snapMph(state.mph - 0.2), 8.0);
+    return { mph: prev, consecutiveFailures: 0 };
+  }
+  return { ...state, consecutiveFailures: newFailures };
 }
 
 export function describeNextMilestone(exercise: Exercise): string {
@@ -103,9 +156,8 @@ export function describeNextMilestone(exercise: Exercise): string {
     const next = nextStateBodyweight(state, params, true);
     if (next.sets !== state.sets) {
       return `Complete 1 more → ${next.sets}×${state.repsPerSet}`;
-    } else {
-      return `Complete 1 more → ${next.sets}×${next.repsPerSet}`;
     }
+    return `Complete 1 more → ${next.sets}×${next.repsPerSet}`;
   } else {
     const weight = exercise.current_weight ?? 0;
     const state: WeightedState = {
@@ -125,11 +177,10 @@ export function describeNextMilestone(exercise: Exercise): string {
     };
     const next = nextStateWeighted(state, params, true);
     if (next.weight !== state.weight) {
-      return `Complete 1 more → +${Math.round((params.weightIncrease) * 100)}% weight, reset to ${next.sets}×${next.reps}`;
+      return `Complete 1 more → +${Math.round(params.weightIncrease * 100)}% weight, reset to ${next.sets}×${next.reps}`;
     } else if (next.reps !== state.reps) {
       return `Complete 1 more → ${next.sets}×${next.reps}`;
-    } else {
-      return `Complete 1 more → ${next.sets}×${state.reps}`;
     }
+    return `Complete 1 more → ${next.sets}×${state.reps}`;
   }
 }

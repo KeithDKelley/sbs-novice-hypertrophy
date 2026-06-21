@@ -1,8 +1,12 @@
 import db from '../client';
-import type { Exercise } from '../../lib/progression';
+import type { Exercise, RunExercise } from '../../lib/progression';
 
 const getAllExercisesStmt = db.prepare(
-  'SELECT * FROM exercises ORDER BY sort_order ASC',
+  "SELECT * FROM exercises WHERE exercise_type = 'standard' OR exercise_type IS NULL ORDER BY sort_order ASC",
+);
+
+const getRunExercisesStmt = db.prepare(
+  "SELECT * FROM exercises WHERE exercise_type IN ('run_distance', 'run_speed', 'run_outdoor') ORDER BY sort_order ASC",
 );
 
 const getExercisesForDayStmt = db.prepare(`
@@ -54,6 +58,10 @@ const upsertExerciseStmt = db.prepare(`
 
 export function getAllExercises(): Exercise[] {
   return getAllExercisesStmt.all() as Exercise[];
+}
+
+export function getRunExercises(): RunExercise[] {
+  return getRunExercisesStmt.all() as RunExercise[];
 }
 
 export function getExercisesForDay(dayNumber: number): Exercise[] {

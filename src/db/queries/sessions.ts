@@ -32,6 +32,10 @@ export function getAllSessions(): WorkoutSession[] {
   return getAllSessionsStmt.all() as WorkoutSession[];
 }
 
+export function getWeekSessions(weekNumber: number): WorkoutSession[] {
+  return db.prepare('SELECT * FROM workout_sessions WHERE week_number = ? ORDER BY day_number ASC').all(weekNumber) as WorkoutSession[];
+}
+
 export function insertSession(data: {
   date: string;
   week_number: number;

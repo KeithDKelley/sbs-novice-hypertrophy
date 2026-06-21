@@ -2,11 +2,15 @@ import { describe, it, expect } from 'vitest';
 import {
   nextStateWeighted,
   nextStateBodyweight,
+  nextRunDistanceState,
+  nextRunSpeedState,
   roundToIncrement,
   type WeightedState,
   type WeightedParams,
   type BodyweightState,
   type BodyweightParams,
+  type RunDistanceState,
+  type RunSpeedState,
 } from '../src/lib/progression';
 
 const DEFAULT_WEIGHTED_PARAMS: WeightedParams = {
@@ -218,5 +222,69 @@ describe('nextStateBodyweight', () => {
       state = nextStateBodyweight(state, params, true);
       expect(state).toEqual(exp);
     }
+  });
+});
+
+describe('nextRunDistanceState', () => {
+  it('advances 0.5 miles on success and resets consecutive failures', () => {
+    const s: RunDistanceState = { miles: 3.0, consecutiveFailures: 0 };
+    expect(nextRunDistanceState(s, true)).toEqual({ miles: 3.5, consecutiveFailures: 0 });
+  });
+
+  it('caps at 6.25 miles', () => {
+    const s: RunDistanceState = { miles: 6.0, consecutiveFailures: 0 };
+    expect(nextRunDistanceState(s, true)).toEqual({ miles: 6.25, consecutiveFailures: 0 });
+  });
+
+  it('stays at 6.25 once reached', () => {
+    const s: RunDistanceState = { miles: 6.25, consecutiveFailures: 0 };
+    expect(nextRunDistanceState(s, true)).toEqual({ miles: 6.25, consecutiveFailures: 0 });
+  });
+
+  it('increments consecutive_failures on first fail without moving state back', () => {
+    const s: RunDistanceState = { miles: 4.0, consecutiveFailures: 0 };
+    expect(nextRunDistanceState(s, false)).toEqual({ miles: 4.0, consecutiveFailures: 1 });
+  });
+
+  it('goes back one step on second consecutive fail', () => {
+    const s: RunDistanceState = { miles: 4.0, consecutiveFailures: 1 };
+    expect(nextRunDistanceState(s, false)).toEqual({ miles: 3.5, consecutiveFailures: 0 });
+  });
+
+  it('does not go below 3.0 miles', () => {
+    const s: RunDistanceState = { miles: 3.0, consecutiveFailures: 1 };
+    expect(nextRunDistanceState(s, false)).toEqual({ miles: 3.0, consecutiveFailures: 0 });
+  });
+
+  it('resets consecutive failures after a success', () => {
+    const s: RunDistanceState = { miles: 3.5, consecutiveFailures: 1 };
+    expect(nextRunDistanceState(s, true)).toEqual({ miles: 4.0, consecutiveFailures: 0 });
+  });
+});
+
+describe('nextRunSpeedState', () => {
+  it('advances 0.2 MPH on success', () => {
+    const s: RunSpeedState = { mph: 8.0, consecutiveFailures: 0 };
+    expect(nextRunSpeedState(s, true)).toEqual({ mph: 8.2, consecutiveFailures: 0 });
+  });
+
+  it('caps at 9.6 MPH', () => {
+    const s: RunSpeedState = { mph: 9.4, consecutiveFailures: 0 };
+    expect(nextRunSpeedState(s, true)).toEqual({ mph: 9.6, consecutiveFailures: 0 });
+  });
+
+  it('increments consecutive_failures on first fail', () => {
+    const s: RunSpeedState = { mph: 8.6, consecutiveFailures: 0 };
+    expect(nextRunSpeedState(s, false)).toEqual({ mph: 8.6, consecutiveFailures: 1 });
+  });
+
+  it('goes back 0.2 MPH on second consecutive fail', () => {
+    const s: RunSpeedState = { mph: 8.6, consecutiveFailures: 1 };
+    expect(nextRunSpeedState(s, false)).toEqual({ mph: 8.4, consecutiveFailures: 0 });
+  });
+
+  it('does not go below 8.0 MPH', () => {
+    const s: RunSpeedState = { mph: 8.0, consecutiveFailures: 1 };
+    expect(nextRunSpeedState(s, false)).toEqual({ mph: 8.0, consecutiveFailures: 0 });
   });
 });

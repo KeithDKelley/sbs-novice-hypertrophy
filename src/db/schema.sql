@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS exercises (
   is_bodyweight   INTEGER NOT NULL DEFAULT 0,
   rounding        REAL NOT NULL DEFAULT 5,
   sort_order      INTEGER NOT NULL,
+  -- lifting progression params
   starting_sets          INTEGER NOT NULL DEFAULT 3,
   ending_sets            INTEGER NOT NULL DEFAULT 5,
   starting_reps          INTEGER,
@@ -20,10 +21,17 @@ CREATE TABLE IF NOT EXISTS exercises (
   set_increase           INTEGER NOT NULL DEFAULT 1,
   reps_per_set_increase  INTEGER NOT NULL DEFAULT 2,
   weight_increase        REAL,
+  -- lifting state
   current_weight         REAL,
   current_sets           INTEGER NOT NULL DEFAULT 3,
   current_reps           INTEGER,
-  current_reps_per_set   INTEGER
+  current_reps_per_set   INTEGER,
+  -- exercise type: 'standard' | 'run_distance' | 'run_speed' | 'run_outdoor'
+  exercise_type          TEXT NOT NULL DEFAULT 'standard',
+  -- run state
+  current_miles          REAL,
+  current_mph            REAL,
+  consecutive_failures   INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS day_assignments (
@@ -50,4 +58,16 @@ CREATE TABLE IF NOT EXISTS workout_entries (
   prescribed_reps   INTEGER,
   completed         INTEGER NOT NULL,
   notes             TEXT
+);
+
+CREATE TABLE IF NOT EXISTS cardio_log (
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  exercise_id      TEXT NOT NULL,
+  date             TEXT NOT NULL,
+  week_number      INTEGER NOT NULL,
+  completed        INTEGER NOT NULL DEFAULT 1,
+  prescribed_miles REAL,
+  prescribed_mph   REAL,
+  time_seconds     INTEGER,
+  logged_at        TEXT NOT NULL
 );

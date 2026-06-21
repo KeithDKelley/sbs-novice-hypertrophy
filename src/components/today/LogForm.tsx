@@ -47,7 +47,7 @@ export function LogForm({ exercises, existingSession }: LogFormProps) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-1">
       {exercises.map((exercise) => (
         <WorkoutCard
           key={exercise.id}
