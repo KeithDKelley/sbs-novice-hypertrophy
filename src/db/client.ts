@@ -57,6 +57,9 @@ db.prepare(`
     exercise_type, current_miles, current_mph, consecutive_failures,
     starting_sets, ending_sets, set_increase, reps_per_set_increase
   ) VALUES (?, ?, 'Cardio', 0, 0, ?, ?, ?, ?, 0, 1, 1, 0, 0)
-`).run('run_outdoor', 'Outdoor run (IRL)', 102, 'run_outdoor', 6.25, null);
+`).run('run_outdoor', 'Outdoor run', 102, 'run_outdoor', 6.25, null);
+
+// Rename if the old name is still stored
+db.prepare("UPDATE exercises SET name = 'Outdoor run' WHERE id = 'run_outdoor' AND name = 'Outdoor run (IRL)'").run();
 
 export default db;
